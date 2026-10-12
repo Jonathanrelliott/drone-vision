@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drone Vision Safety Check</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --line: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --safe: #2ea043;
+    --danger: #f85149;
+    --accent: #58a6ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+  }
+  header, main, footer { max-width: 900px; margin: 0 auto; padding: 0 16px; }
+  header { padding-top: 28px; }
+  h1 { margin: 0 0 4px; font-size: 1.8rem; }
+  header p { margin: 0; color: var(--muted); }
+  main { display: grid; gap: 20px; grid-template-columns: 1fr 1fr; margin-top: 24px; }
+  @media (max-width: 720px) { main { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .panel h2 { margin: 0 0 12px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+
+  /* Camera view with drone HUD overlay */
+  .viewport {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    border: 3px solid var(--line);
+    transition: border-color .2s;
+  }
+  .viewport.safe { border-color: var(--safe); }
+  .viewport.danger { border-color: var(--danger); }
+  .viewport canvas, .viewport img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .viewport .placeholder { color: var(--muted); text-align: center; padding: 20px; }
+  .hud { position: absolute; inset: 0; pointer-events: none; }
+  .hud::before, .hud::after {
+    content: ""; position: absolute; left: 50%; top: 50%;
+    background: rgba(255,255,255,.6);
+  }
+  .hud::before { width: 40px; height: 2px; transform: translate(-50%, -50%); }
+  .hud::after  { width: 2px; height: 40px; transform: translate(-50%, -50%); }
+  .hud .tag {
+    position: absolute; top: 10px; left: 10px;
+    font: 600 12px ui-monospace, Consolas, monospace;
+    background: rgba(0,0,0,.6); padding: 3px 8px; border-radius: 4px;
+  }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  button, .upload {
+    font: inherit; font-weight: 600;
+    background: var(--accent); color: #0d1117;
+    border: 0; border-radius: 8px; padding: 10px 16px; cursor: pointer;
+  }
+  button.secondary, .upload { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  button:disabled { opacity: .5; cursor: default; }
+  .upload input { display: none; }
+
+  /* Decision */
+  .status {
+    border-radius: 10px; padding: 18px; text-align: center;
+    background: #21262d; margin-bottom: 16px;
+  }
+  .status .label { font-size: 2rem; font-weight: 800; letter-spacing: .04em; }
+  .status .action { color: var(--muted); }
+  .status.safe { background: rgba(46,160,67,.15); }
+  .status.safe .label { color: var(--safe); }
+  .status.danger { background: rgba(248,81,73,.15); }
+  .status.danger .label { color: var(--danger); }
+
+  .bar { margin-bottom: 12px; }
+  .bar .row { display: flex; justify-content: space-between; font-size: .95rem; }
+  .bar .track { height: 12px; background: #21262d; border-radius: 6px; overflow: hidden; margin-top: 4px; }
+  .bar .fill { height: 100%; width: 0; background: var(--accent); transition: width .15s; }
+  .bar.safe .fill { background: var(--safe); }
+  .bar.danger .fill { background: var(--danger); }
+
+  .about { grid-column: 1 / -1; }
+  .about ul { margin: 0; padding-left: 20px; }
+  .about p { margin: 0 0 8px; }
+  footer { color: var(--muted); font-size: .85rem; padding-top: 24px; padding-bottom: 32px; }
+  .error { color: var(--danger); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Drone Vision Safety Check</h1>
+  <p>A proof-of-concept image model, trained in Google Teachable Machine, that tells a drone whether what its camera sees is safe or dangerous.</p>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Drone camera</h2>
+    <div class="viewport" id="viewport">
+      <div class="placeholder" id="placeholder">Start the camera or upload a photo to test the model.</div>
+      <div class="hud"><span class="tag" id="hudTag">CAM OFF</span></div>
+    </div>
+    <div class="controls">
+      <button id="startBtn">Start camera</button>
+      <button id="stopBtn" class="secondary" disabled>Stop</button>
+      <label class="upload">Upload photo<input type="file" id="fileInput" accept="image/*"></label>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Model decision</h2>
+    <div class="status" id="status">
+      <div class="label" id="statusLabel">WAITING</div>
+      <div class="action" id="statusAction">Loading model…</div>
+    </div>
+    <div id="bars"></div>
+  </section>
+
+  <section class="panel about">
+    <h2>How it works</h2>
+    <p>Each camera frame is passed to an image classifier trained on two classes:</p>
+    <ul>
+      <li><strong>Danger</strong>: obstacles such as trees, walls and power lines, plus unpredictable activity like a backflip on a bike. The drone should stop or steer away.</li>
+      <li><strong>Safe</strong>: open space and normal activity such as a person walking. The drone can continue.</li>
+    </ul>
+    <p style="margin-top:8px">Limitation: the model classifies the whole frame. It doesn't locate the obstacle or measure its distance, which a real drone would need from object detection and depth sensors.</p>
+  </section>
+</main>
+
+<footer>Built with Teachable Machine and TensorFlow.js. Everything runs in your browser; no images are uploaded anywhere.</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
+<script>
+  const MODEL_URL = "./model/";
+  const ACTIONS = {
+    danger: "Obstacle or hazard ahead: stop and steer away",
+    safe: "Path is clear: continue flying"
+  };
+
+  let model, webcam, running = false;
+  const viewport = document.getElementById("viewport");
+  const placeholder = document.getElementById("placeholder");
+  const hudTag = document.getElementById("hudTag");
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const statusEl = document.getElementById("status");
+  const statusLabel = document.getElementById("statusLabel");
+  const statusAction = document.getElementById("statusAction");
+  const barsEl = document.getElementById("bars");
+
+  const kind = name => /danger/i.test(name) ? "danger" : /safe/i.test(name) ? "safe" : "";
+
+  async function init() {
+    try {
+      model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
+      barsEl.innerHTML = model.getClassLabels().map((name, i) => `
+        <div class="bar ${kind(name)}">
+          <div class="row"><span>${name}</span><span id="pct${i}">0%</span></div>
+          <div class="track"><div class="fill" id="fill${i}"></div></div>
+        </div>`).join("");
+      // Warm up the model so the first real prediction is fast
+      const blank = document.createElement("canvas");
+      blank.width = blank.height = 224;
+      await model.predict(blank);
+      statusAction.textContent = "Model ready. Start the camera or upload a photo.";
+    } catch (e) {
+      statusAction.innerHTML = '<span class="error">Could not load the model. Check that the model folder is next to index.html.</span>';
+      console.error(e);
+    }
+  }
+
+  function show(predictions) {
+    let best = predictions[0];
+    predictions.forEach((p, i) => {
+      if (p.probability > best.probability) best = p;
+      const pct = Math.round(p.probability * 100) + "%";
+      document.getElementById("pct" + i).textContent = pct;
+      document.getElementById("fill" + i).style.width = pct;
+    });
+    const k = kind(best.className);
+    statusEl.className = "status " + k;
+    viewport.className = "viewport " + k;
+    statusLabel.textContent = best.className.toUpperCase();
+    statusAction.textContent = ACTIONS[k] || "";
+    hudTag.textContent = best.className.toUpperCase() + " " + Math.round(best.probability * 100) + "%";
+  }
+
+  function clearView() {
+    viewport.querySelectorAll("canvas, img").forEach(el => el.remove());
+    placeholder.style.display = "none";
+  }
+
+  startBtn.onclick = async () => {
+    if (!model) return;
+    startBtn.disabled = true;
+    try {
+      webcam = new tmImage.Webcam(400, 400, true);
+      await webcam.setup({ facingMode: "environment" });
+      await webcam.play();
+      clearView();
+      viewport.prepend(webcam.canvas);
+      running = true;
+      stopBtn.disabled = false;
+      loop();
+    } catch (e) {
+      startBtn.disabled = false;
+      statusAction.innerHTML = '<span class="error">Camera blocked or unavailable. Allow camera access and try again.</span>';
+      console.error(e);
+    }
+  };
+
+  stopBtn.onclick = () => {
+    running = false;
+    if (webcam) webcam.stop();
+    stopBtn.disabled = true;
+    startBtn.disabled = false;
+    hudTag.textContent = "CAM OFF";
+  };
+
+  async function loop() {
+    if (!running) return;
+    webcam.update();
+    show(await model.predict(webcam.canvas));
+    requestAnimationFrame(loop);
+  }
+
+  document.getElementById("fileInput").onchange = e => {
+    const file = e.target.files[0];
+    if (!file || !model) return;
+    if (running) stopBtn.onclick();
+    statusAction.textContent = "Analyzing…";
+    const img = new Image();
+    img.onload = async () => {
+      clearView();
+      viewport.prepend(img);
+      show(await model.predict(img));
+    };
+    img.src = URL.createObjectURL(file);
+    e.target.value = "";
+  };
+
+  init();
+</script>
+</body>
+</html>
