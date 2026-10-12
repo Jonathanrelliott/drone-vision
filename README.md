@@ -2,7 +2,7 @@
 
 A proof-of-concept website for a drone camera image model trained in Google Teachable Machine. The model sorts what the camera sees into two classes:
 
-- **Danger**: obstacles (trees, walls, power lines) and unpredictable activity (a backflip on a bike). The drone should stop or steer away.
+- **Danger**: obstacles (trees, power lines) and unpredictable activity (a backflip on a bike). The drone should stop or steer away.
 - **Safe**: clear space and normal activity (a person walking). The drone can continue.
 
 The page runs the model in the browser with TensorFlow.js. You can use the live camera or upload a photo.
