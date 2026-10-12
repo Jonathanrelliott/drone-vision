@@ -96,6 +96,10 @@
 
   .about, .samples { grid-column: 1 / -1; }
   .hint { color: var(--muted); margin: 0 0 12px; }
+  .note {
+    margin: 0 0 14px; padding: 10px 12px; border-radius: 8px;
+    background: rgba(88,166,255,.1); border-left: 4px solid var(--accent); font-size: .95rem;
+  }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
   .grid .hint { grid-column: 1 / -1; margin: 0; }
   .sample {
@@ -147,6 +151,7 @@
   <section class="panel samples">
     <h2>Sample photos</h2>
     <p class="hint">Click a photo to see what the drone decides.</p>
+    <p class="note"><strong>Note:</strong> none of these sample photos were used to train the model. They are new images it has never seen, so they show how well the model works on real-world pictures.</p>
     <div class="grid" id="sampleGrid"><p class="hint">Loading samples…</p></div>
   </section>
 
