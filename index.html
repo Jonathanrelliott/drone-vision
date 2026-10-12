@@ -27,6 +27,15 @@
   header { padding-top: 28px; }
   h1 { margin: 0 0 4px; font-size: 1.8rem; }
   header p { margin: 0; color: var(--muted); }
+  .byline {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px;
+    margin-bottom: 10px; font-size: .9rem; font-weight: 600; color: var(--text);
+  }
+  .byline .dot { color: var(--muted); }
+  .byline .tag {
+    font-size: .75rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 1px 10px;
+  }
   main { display: grid; gap: 20px; grid-template-columns: 1fr 1fr; margin-top: 24px; }
   @media (max-width: 720px) { main { grid-template-columns: 1fr; } }
   .panel {
@@ -121,6 +130,10 @@
 </head>
 <body>
 <header>
+  <div class="byline">
+    <span class="tag">Proof of concept</span>
+    <span>Jonathan Elliott</span><span class="dot">·</span><span>2239 AI Fundamentals</span>
+  </div>
   <h1>Drone Vision Safety Check</h1>
   <p>A proof-of-concept image model, trained in Google Teachable Machine, that tells a drone whether what its camera sees is safe or dangerous.</p>
 </header>

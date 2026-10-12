@@ -1,5 +1,9 @@
 # Drone Vision Safety Check
 
+**Jonathan Elliott** · 2239 AI Fundamentals · Proof of concept
+
+**Live site:** https://jonathanrelliott.github.io/drone-vision/
+
 A proof-of-concept website for a drone camera image model trained in Google Teachable Machine. The model sorts what the camera sees into two classes:
 
 - **Danger**: obstacles (trees, power lines) and unpredictable activity (a backflip on a bike). The drone should stop or steer away.
