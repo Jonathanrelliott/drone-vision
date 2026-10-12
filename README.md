@@ -14,7 +14,12 @@ index.html          the website
 model/model.json    model structure (exported from Teachable Machine)
 model/metadata.json class labels
 model/weights.bin   trained weights
+samples/            sample photos visitors can click to test the model
 ```
+
+## Adding sample photos
+
+Open the `samples` folder in the repository, click **Add file → Upload files**, and drag in your photos. They show up in the website's "Sample photos" section automatically, with the file name as the caption (`power-line-1.jpg` becomes "power line 1").
 
 ## Publish on GitHub Pages
 

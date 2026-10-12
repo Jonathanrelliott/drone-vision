@@ -94,7 +94,21 @@
   .bar.safe .fill { background: var(--safe); }
   .bar.danger .fill { background: var(--danger); }
 
-  .about { grid-column: 1 / -1; }
+  .about, .samples { grid-column: 1 / -1; }
+  .hint { color: var(--muted); margin: 0 0 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+  .grid .hint { grid-column: 1 / -1; margin: 0; }
+  .sample {
+    padding: 0; background: #000; border: 2px solid var(--line); border-radius: 8px;
+    overflow: hidden; cursor: pointer; color: var(--text); text-align: left;
+  }
+  .sample:hover, .sample:focus-visible { border-color: var(--accent); }
+  .sample.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .sample img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+  .sample span {
+    display: block; padding: 6px 8px; font-size: .8rem; font-weight: 500; background: var(--panel);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .about ul { margin: 0; padding-left: 20px; }
   .about p { margin: 0 0 8px; }
   footer { color: var(--muted); font-size: .85rem; padding-top: 24px; padding-bottom: 32px; }
@@ -128,6 +142,12 @@
       <div class="action" id="statusAction">Loading model…</div>
     </div>
     <div id="bars"></div>
+  </section>
+
+  <section class="panel samples">
+    <h2>Sample photos</h2>
+    <p class="hint">Click a photo to see what the drone decides.</p>
+    <div class="grid" id="sampleGrid"><p class="hint">Loading samples…</p></div>
   </section>
 
   <section class="panel about">
@@ -239,22 +259,68 @@
     requestAnimationFrame(loop);
   }
 
-  document.getElementById("fileInput").onchange = e => {
-    const file = e.target.files[0];
-    if (!file || !model) return;
+  function predictImage(src) {
+    if (!model) return;
     if (running) stopBtn.onclick();
     statusAction.textContent = "Analyzing…";
     const img = new Image();
     img.onload = async () => {
       clearView();
       viewport.prepend(img);
+      hudTag.textContent = "PHOTO";
       show(await model.predict(img));
     };
-    img.src = URL.createObjectURL(file);
+    img.src = src;
+  }
+
+  document.getElementById("fileInput").onchange = e => {
+    const file = e.target.files[0];
+    if (file) predictImage(URL.createObjectURL(file));
     e.target.value = "";
+    document.querySelectorAll(".sample.active").forEach(b => b.classList.remove("active"));
   };
 
+  // Sample photos: every image in the repository's "samples" folder is listed automatically.
+  // Works out the GitHub owner/repo from the github.io address.
+  async function loadSamples() {
+    const grid = document.getElementById("sampleGrid");
+    let owner = "Jonathanrelliott", repo = "drone-vision";
+    const m = location.hostname.match(/^([^.]+)\.github\.io$/);
+    if (m) { owner = m[1]; repo = location.pathname.split("/").filter(Boolean)[0] || repo; }
+    try {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/samples`);
+      if (!res.ok) throw new Error(res.status);
+      const files = (await res.json())
+        .filter(f => f.type === "file" && /\.(jpe?g|png|gif|webp|bmp)$/i.test(f.name))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+      if (!files.length) {
+        grid.innerHTML = '<p class="hint">No sample photos yet. Upload images to the <code>samples</code> folder in the repository.</p>';
+        return;
+      }
+      grid.innerHTML = "";
+      files.forEach(f => {
+        const src = "samples/" + encodeURIComponent(f.name);
+        const label = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
+        const btn = document.createElement("button");
+        btn.className = "sample";
+        btn.title = label;
+        btn.innerHTML = `<img src="${src}" alt="${label}" loading="lazy"><span>${label}</span>`;
+        btn.onclick = () => {
+          document.querySelectorAll(".sample.active").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          predictImage(src);
+          document.getElementById("viewport").scrollIntoView({ behavior: "smooth", block: "center" });
+        };
+        grid.appendChild(btn);
+      });
+    } catch (e) {
+      grid.innerHTML = '<p class="hint">Sample photos couldn\'t be loaded right now. Try refreshing the page.</p>';
+      console.error(e);
+    }
+  }
+
   init();
+  loadSamples();
 </script>
 </body>
 </html>
