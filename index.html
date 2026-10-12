@@ -32,6 +32,8 @@
     margin-bottom: 10px; font-size: .9rem; font-weight: 600; color: var(--text);
   }
   .byline .dot { color: var(--muted); }
+  .byline .repo, footer a { color: var(--accent); text-decoration: none; }
+  .byline .repo:hover, footer a:hover { text-decoration: underline; }
   .byline .tag {
     font-size: .75rem; text-transform: uppercase; letter-spacing: .06em;
     color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 1px 10px;
@@ -133,6 +135,7 @@
   <div class="byline">
     <span class="tag">Proof of concept</span>
     <span>Jonathan Elliott</span><span class="dot">·</span><span>2239 AI Fundamentals</span>
+    <span class="dot">·</span><a class="repo" href="https://github.com/Jonathanrelliott/drone-vision" target="_blank" rel="noopener">View code on GitHub ↗</a>
   </div>
   <h1>Drone Vision Safety Check</h1>
   <p>A proof-of-concept image model, trained in Google Teachable Machine, that tells a drone whether what its camera sees is safe or dangerous.</p>
@@ -179,7 +182,7 @@
   </section>
 </main>
 
-<footer>Built with Teachable Machine and TensorFlow.js. Everything runs in your browser; no images are uploaded anywhere.</footer>
+<footer>Built with Teachable Machine and TensorFlow.js. Everything runs in your browser; no images are uploaded anywhere. Source code: <a href="https://github.com/Jonathanrelliott/drone-vision" target="_blank" rel="noopener">github.com/Jonathanrelliott/drone-vision</a></footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
